@@ -18,3 +18,24 @@ exports.loadSessions= async (req, res, next) => {
           console.error(error);
         }
 }
+
+exports.storeSession = async (req, res, next) => {
+    console.log(req.body)
+    const appointment = req.body.appointment; 
+    const title = appointment.title;
+    const startDate = appointment.startDate;
+    const endDate = appointment.endDate;
+    const allDay = appointment.allDay;
+    try {
+        await db.collection("sessions").add({
+            title,
+            startDate,
+            endDate,
+            allDay
+        });
+        res.status(200);
+      } catch (error) {
+        console.error(error);
+      }
+}
+  
