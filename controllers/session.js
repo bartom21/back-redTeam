@@ -6,13 +6,13 @@ const router = express.Router();
 
 exports.loadSessions= async (req, res, next) => {
         try {
-          const querySnapshot = await db.collection("contacts").get();
-          const contacts = querySnapshot.docs.map((doc) => ({
+          const querySnapshot = await db.collection("sessions").get();
+          const appointments = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }));
           res.status(201).json({
-            clients: contacts
+            appointments: appointments
         });
         } catch (error) {
           console.error(error);
@@ -33,7 +33,14 @@ exports.storeSession = async (req, res, next) => {
             endDate,
             allDay
         });
-        res.status(200);
+        const querySnapshot = await db.collection("sessions").get();
+        const appointments = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        res.status(201).json({
+            appointments: appointments
+        });
       } catch (error) {
         console.error(error);
       }
