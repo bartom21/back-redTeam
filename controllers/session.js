@@ -4,6 +4,27 @@ const { db } = require("../firebase");
 
 const router = express.Router();
 
+exports.deleteSession= async (req, res, next) => {
+    console.log("deleteSession");
+    console.log(req.body)
+    try {
+        const { id } = req.params;
+        console.log(id);
+        const sessionRef = db.collection('sessions').doc(id);
+        await sessionRef.update({deleted: true});  
+        const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
+        const appointments = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        res.status(201).json({
+            appointments: appointments
+        });
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 exports.editSession= async (req, res, next) => {
     console.log("editSession");
     console.log(req.body)
@@ -36,8 +57,8 @@ exports.editSession= async (req, res, next) => {
 
 exports.loadSessions= async (req, res, next) => {
         try {
-          const querySnapshot = await db.collection("sessions").get();
-          const appointments = querySnapshot.docs.map((doc) => ({
+            const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
+            const appointments = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
           }));
@@ -60,6 +81,7 @@ exports.storeSession = async (req, res, next) => {
     const professional = appointment.professional;
     const therapy = appointment.therapy;
     const rRule = appointment.rRule ? appointment.rRule : null;
+    const deleted = false;
     try {
         await db.collection("sessions").add({
             title,
@@ -69,9 +91,10 @@ exports.storeSession = async (req, res, next) => {
             patient,
             professional,
             therapy,
-            rRule
+            rRule,
+            deleted
         });
-        const querySnapshot = await db.collection("sessions").get();
+        const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
         const appointments = querySnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
