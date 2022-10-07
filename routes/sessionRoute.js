@@ -9,7 +9,7 @@ router.put('/deleteSession/:id', isAuth, sessionController.deleteSession);
 
 router.put('/session/:id', isAuth, sessionController.editSession);
 
-router.get('/calendar', sessionController.loadSessions);
+router.get('/calendar', isAuth, sessionController.loadSessions);
 
 router.post('/session', isAuth, sessionController.storeSession);
 
