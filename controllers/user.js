@@ -1,38 +1,13 @@
 const express = require('express');
 
 const { db } = require("../firebase");
-const admin = require("firebase-admin")
+const admin = require("firebase-admin");
+const { use } = require('../routes/sessionRoute');
 
 const router = express.Router();
 
 
 exports.loadUsers= async (req, res, next) => {
-    /*const listAllUsers = (nextPageToken) => {
-        // List batch of users, 1000 at a time.
-        console.log("entro");
-        var users = [];
-        admin.auth()
-          .listUsers(2, nextPageToken)
-          .then((listUsersResult) => {
-            listUsersResult.users.forEach((userRecord) => {
-              users.push(userRecord)
-            });
-            if (listUsersResult.pageToken) {
-              // List next batch of users.
-              listAllUsers(listUsersResult.pageToken);
-            }
-            //return users
-          })
-          .then(()=>{
-            console.log(users)
-          })
-          .catch((error) => {
-            console.log('Error listing users:', error);
-          });
-
-      };
-      // Start listing users from the beginning, 1000 at a time.
-    listAllUsers()*/
 
     async function getAllUsers(nextPageToken){
 
@@ -64,10 +39,26 @@ exports.loadUsers= async (req, res, next) => {
     };
 
 const users = await getAllUsers();
-console.log(users)
+console.log(users);
+const usersData = users.map((user, index) => ({id: index, email: user.email, isVerified: user.emailVerified.toString(), role: user.customClaims ? user.customClaims.role : 'Sin asignar'}));
+console.log(usersData);
 res.status(201).json({
-    users: users
+    users: usersData
 });
 
 }
 
+exports.addRole = async (req, res, next) => {
+    const {uid, role} = req.body
+    await admin.auth()
+    .setCustomUserClaims(uid, { role: role })
+    .then(() => {
+        res.status(201).json({
+            role: role
+        });
+    })
+    .catch((error) => {
+        console.log('Error listing users:', error);
+        next(error)
+    });
+}

@@ -35,10 +35,6 @@ exports.editSession= async (req, res, next) => {
                 .collection("sessions")
                 .doc(id)
                 .update(data);
-    /*const updated = await db
-                        .collection("sessions")
-                        .doc(id)
-                        .get().docs[0].data();*/
     const sessionRef = db.collection('sessions').doc(id);
     const doc = await sessionRef.get();
     if (!doc.exists) {
