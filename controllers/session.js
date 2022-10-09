@@ -54,10 +54,14 @@ exports.editSession= async (req, res, next) => {
 exports.loadSessions= async (req, res, next) => {
         try {
             const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
-            const appointments = querySnapshot.docs.map((doc) => ({
+            const appointments = querySnapshot.docs.map((doc) =>{
+            const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
+            return {
             id: doc.id,
-            ...doc.data(),
-          }));
+            isRecurrent: doc.data().rRule ? 'Si' : 'No',
+            date: date,
+            ...doc.data()
+          }});
           res.status(201).json({
             appointments: appointments
         });
