@@ -8,12 +8,27 @@ const router = express.Router();
 
 function getUserRowData(user){
     const rowUsers = {
-        id: user.uid, 
+        id: user.uid,
+        name: user.name ? user.name : 'Sin asignar',
         email: user.email, 
         isVerified: user.emailVerified ? 'Si' : 'No', 
         role: user.customClaims ? user.customClaims.role : 'Sin asignar'
     };
     return rowUsers
+}
+
+async function getUserProfile(uid){
+    console.log(uid)
+    let data = null
+    const userRef = db.collection('users').doc(uid);
+    const doc = await userRef.get();
+    if (!doc.exists) {
+        console.log('No such document!');
+    } else {
+        console.log('Document data:', doc.data());
+        data = doc.data()
+    }
+    return data
 }
 
 
@@ -27,10 +42,61 @@ exports.loadUsers= async (req, res, next) => {
             .listUsers(1000, nextPageToken)
             .then(async (listUsersResult) =>    {
     
-                listUsersResult.users.forEach((userRecord) => {
+                for (const userRecord of listUsersResult.users) {
                     const {uid, email, emailVerified, customClaims} = userRecord;
-                    _users_list.push({uid, email, emailVerified, customClaims})
-                  });
+                    const profile = await getUserProfile(uid)
+                    if(profile){
+                        const name = profile.name
+                        _users_list.push({uid, name, email, emailVerified, customClaims})
+                    }else{
+                        _users_list.push({uid, email, emailVerified, customClaims})
+                    }
+                    }
+                
+                if (listUsersResult.pageToken) {
+                    // List next batch of users.
+                    const temp_list =  await getAllUsers(listUsersResult.pageToken);
+                    if (temp_list.length > 0) { _users_list = _users_list.concat(temp_list); }
+                }
+    
+            })
+            .catch((error) => {
+                console.log('Error listing users:', error);
+                next(error)
+            });
+    
+        return _users_list
+    };
+
+    const users = await getAllUsers();
+    const usersData =  users.map((user) => getUserRowData(user));;
+    res.status(201).json({
+        users: usersData
+    });
+
+}
+
+exports.loadUsersByRole= async (req, res, next) => {
+    const {role} = req.params;
+    async function getAllUsers(nextPageToken){
+
+        // List batch of users can be max 1000 at a time.
+        var _users_list = [];
+        await admin.auth()
+            .listUsers(1000, nextPageToken)
+            .then(async (listUsersResult) =>    {
+                for (const userRecord of listUsersResult.users) {
+                    const {uid, customClaims} = userRecord;
+                    if(customClaims && customClaims.role==role){
+                        const profile = await getUserProfile(uid)
+                        if(profile){
+                            const name = profile.name
+                            _users_list.push({uid, name})
+                        }else{
+                            _users_list.push({uid})
+                        }
+                    }
+                  }
     
                 
                 if (listUsersResult.pageToken) {
@@ -48,13 +114,12 @@ exports.loadUsers= async (req, res, next) => {
         return _users_list
     };
 
-const users = await getAllUsers();
-console.log(users);
-const usersData =  users.map((user) => getUserRowData(user));;
-console.log(usersData);
-res.status(201).json({
-    users: usersData
-});
+    const users = await getAllUsers();
+    const usersData =  users.map((user) => ({id: user.uid, name: user.name? user.name : 'Sin asignar'}));
+    console.log(users)
+    res.status(201).json({
+        users: usersData
+    });
 
 }
 
@@ -77,4 +142,21 @@ exports.addRole = async (req, res, next) => {
             console.log('Error updating user:', error);
             next(error)
         });
+}
+
+exports.createUser = async (req, res, next) => {
+    console.log(req.body)
+     const {uid, name} = req.body; 
+     try {
+         await db.collection("users").doc(uid).set({
+             name
+         });
+        const profile = getUserProfile(uid)
+        res.status(201).json({
+            uid: uid,
+           name: profile.name
+        });
+       } catch (error) {
+         console.error(error);
+       }
 }

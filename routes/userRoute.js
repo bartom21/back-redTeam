@@ -7,6 +7,11 @@ const userController = require('../controllers/user');
 
 router.get('/allUsers', isAuth, userController.loadUsers);
 
+router.get('/usersByRole/:role', userController.loadUsersByRole);
+
+router.post('/user', userController.createUser);
+
 router.put('/userRole/:uid', isAuth, userController.addRole);
+
 
 module.exports = router;
