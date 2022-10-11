@@ -19,3 +19,19 @@ exports.loadTherapies= async (req, res, next) => {
           console.error(error);
         }
 }
+
+exports.loadLocations= async (req, res, next) => {
+  try {
+      const querySnapshot = await db.collection("locations").get();
+      const locations = querySnapshot.docs.map((doc) =>{
+      return {
+      id: doc.id,
+      ...doc.data()
+    }});
+    res.status(201).json({
+      locations: locations
+  });
+  } catch (error) {
+    console.error(error);
+  }
+}

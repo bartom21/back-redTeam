@@ -80,6 +80,7 @@ exports.storeSession = async (req, res, next) => {
     const patient = appointment.patient;
     const professional = appointment.professional;
     const therapy = appointment.therapy;
+    const location = appointment.location;
     const rRule = appointment.rRule ? appointment.rRule : null;
     const deleted = false;
     try {
@@ -91,6 +92,7 @@ exports.storeSession = async (req, res, next) => {
             patient,
             professional,
             therapy,
+            location,
             rRule,
             deleted
         });
