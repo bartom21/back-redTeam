@@ -7,13 +7,24 @@ const { use } = require('../routes/sessionRoute');
 const router = express.Router();
 
 function getUserRowData(user){
-    const rowUsers = {
-        id: user.uid,
-        name: user.name ? user.name : 'Sin asignar',
-        email: user.email, 
-        isVerified: user.emailVerified ? 'Si' : 'No', 
-        role: user.customClaims ? user.customClaims.role : 'Sin asignar'
-    };
+    if(user.customClaims && user.customClaims.role === 'profesional'){
+        var rowUsers = {
+            id: user.uid,
+            name: user.name ? user.name : 'Sin asignar',
+            email: user.email, 
+            isVerified: user.emailVerified ? 'Si' : 'No', 
+            role: user.customClaims.role,
+            profession: user.profession ? user.profession : 'Sin Asignar'
+        };
+    }else{
+        var rowUsers = {
+            id: user.uid,
+            name: user.name ? user.name : 'Sin asignar',
+            email: user.email, 
+            isVerified: user.emailVerified ? 'Si' : 'No', 
+            role: user.customClaims ? user.customClaims.role : 'Sin asignar'
+        };
+    }
     return rowUsers
 }
 
@@ -47,7 +58,9 @@ exports.loadUsers= async (req, res, next) => {
                     const profile = await getUserProfile(uid)
                     if(profile){
                         const name = profile.name
-                        _users_list.push({uid, name, email, emailVerified, customClaims})
+                        profile.profession 
+                            ? _users_list.push({uid, name, email, profession: profile.profession  ,emailVerified, customClaims})
+                            :  _users_list.push({uid, name, email, emailVerified, customClaims})
                     }else{
                         _users_list.push({uid, email, emailVerified, customClaims})
                     }
