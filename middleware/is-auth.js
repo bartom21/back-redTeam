@@ -10,12 +10,13 @@ module.exports = (req, res, next) => {
             //admin.auth().setCustomUserClaims(uid, { profesional: true })
             // See the UserRecord reference doc for the contents of userRecord.
             //console.log(userRecord)
+            res.locals.user = userRecord
             next()
          })
       })
       .catch((error) => {
         // Handle error
-        err.statusCode = 401;
+        error.statusCode = 401;
         console.log('ERROR');
         next(error);
       });

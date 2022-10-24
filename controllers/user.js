@@ -173,3 +173,40 @@ exports.createUser = async (req, res, next) => {
          console.error(error);
        }
 }
+
+exports.updateProfile = async (req, res, next) => {
+    console.log(req.body)
+    const {uid} = req.params;
+    let user = {}
+    if(req.body.user.profession){
+        user = {
+            name: req.body.user.name,
+            profession: req.body.user.profession
+        }
+    }else{
+        user = {
+            name: req.body.user.name
+        } 
+    }
+     try {
+         await db.collection("users").doc(uid).set(user);
+        const profile = getUserProfile(uid)
+        if(profile.profession){
+            res.status(201).json({
+                user:{
+                id: uid,
+               name: profile.name,
+               profession: profile.profession}
+            });
+        }else{
+            res.status(201).json({
+                user:{
+                id: uid,
+                name: profile.name
+            }
+            });
+        }
+       } catch (error) {
+         console.error(error);
+       }
+}

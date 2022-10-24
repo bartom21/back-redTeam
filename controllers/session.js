@@ -51,6 +51,34 @@ exports.editSession= async (req, res, next) => {
     }
 }
 
+exports.loadSessions2= async (req, res, next) => {
+    if(res.locals.user){
+        if(res.locals.user.customClaims){ 
+            if(res.locals.user.customClaims.role === 'paciente'){ 
+                console.log( res.locals.user.uid)
+                try {
+                    const querySnapshot = await db.collection("sessions").where('deleted','==', false).where('patient.id','==', res.locals.user.uid).get();
+                    const appointments = querySnapshot.docs.map((doc) =>{
+                    const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
+                    return {
+                    id: doc.id,
+                    isRecurrent: doc.data().rRule ? 'Si' : 'No',
+                    date: date,
+                    ...doc.data()
+                  }});
+                  res.status(201).json({
+                    appointments: appointments
+                });
+                } catch (error) {
+                  console.error(error);
+                }
+            }
+        }
+    }
+    console.log(res.locals.user.customClaims.role)
+    res.status(200)
+}
+
 exports.loadSessions= async (req, res, next) => {
         try {
             const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
