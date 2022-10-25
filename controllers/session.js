@@ -4,30 +4,88 @@ const { db } = require("../firebase");
 
 const router = express.Router();
 
+const queryByRole = async (role, res) => {
+    console.log(role)
+    try {
+        const querySnapshot = await db.collection("sessions").where('deleted','==', false).where(role+'.id','==', res.locals.user.uid).get();
+        const appointments = querySnapshot.docs.map((doc) =>{
+        const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
+        return {
+        id: doc.id,
+        isRecurrent: doc.data().rRule ? 'Si' : 'No',
+        date: date,
+        ...doc.data()
+      }});
+      res.status(201).json({
+        appointments: appointments
+    });
+    } catch (error) {
+      console.error(error);
+    }
+}
+
+const queryAllSessions = async (res) => {
+    try {
+        const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
+        const appointments = querySnapshot.docs.map((doc) =>{
+        const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
+        return {
+        id: doc.id,
+        isRecurrent: doc.data().rRule ? 'Si' : 'No',
+        date: date,
+        ...doc.data()
+      }});
+      res.status(201).json({
+        appointments: appointments
+    });
+    } catch (error) {
+      console.error(error);
+    }
+}
+
+const loadEmptySessions = (res) => {
+    try {
+        res.status(201).json({
+          appointments: []
+      });
+      } catch (error) {
+        console.error(error);
+      }
+}
+
+const loadSessionsByRole = (user, res) => {
+    if(user){
+        if(user.customClaims){ 
+            if(user.customClaims.role === 'paciente'){ 
+                queryByRole('patient', res)
+            }else if(user.customClaims.role === 'profesional'){ 
+                queryByRole('professional', res)
+            }else if(user.customClaims.role === 'admin'){ 
+                queryAllSessions(res)
+            }else{ 
+                loadEmptySessions(res)
+            }
+        }else{ 
+            loadEmptySessions(res)
+        }
+    }else{ 
+        loadEmptySessions(res)
+    }
+}
+
 exports.deleteSession= async (req, res, next) => {
-    console.log("deleteSession");
-    console.log(req.body)
     try {
         const { id } = req.params;
         console.log(id);
         const sessionRef = db.collection('sessions').doc(id);
         await sessionRef.update({deleted: true});  
-        const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
-        const appointments = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-        res.status(201).json({
-            appointments: appointments
-        });
+        loadSessionsByRole(res.locals.user, res)
     } catch (error) {
         console.error(error);
     }
 }
 
 exports.editSession= async (req, res, next) => {
-    console.log("editSession");
-    console.log(req.body)
     try {
         const { id } = req.params;
         const data = req.body.appointment[id];
@@ -40,7 +98,6 @@ exports.editSession= async (req, res, next) => {
     if (!doc.exists) {
       console.log('No such document!');
     } else {
-      console.log('Document data:', doc.data());
       res.status(201).json({
         id: id,
         ...doc.data()
@@ -51,51 +108,8 @@ exports.editSession= async (req, res, next) => {
     }
 }
 
-exports.loadSessions2= async (req, res, next) => {
-    if(res.locals.user){
-        if(res.locals.user.customClaims){ 
-            if(res.locals.user.customClaims.role === 'paciente'){ 
-                console.log( res.locals.user.uid)
-                try {
-                    const querySnapshot = await db.collection("sessions").where('deleted','==', false).where('patient.id','==', res.locals.user.uid).get();
-                    const appointments = querySnapshot.docs.map((doc) =>{
-                    const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
-                    return {
-                    id: doc.id,
-                    isRecurrent: doc.data().rRule ? 'Si' : 'No',
-                    date: date,
-                    ...doc.data()
-                  }});
-                  res.status(201).json({
-                    appointments: appointments
-                });
-                } catch (error) {
-                  console.error(error);
-                }
-            }
-        }
-    }
-    console.log(res.locals.user.customClaims.role)
-    res.status(200)
-}
-
-exports.loadSessions= async (req, res, next) => {
-        try {
-            const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
-            const appointments = querySnapshot.docs.map((doc) =>{
-            const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
-            return {
-            id: doc.id,
-            isRecurrent: doc.data().rRule ? 'Si' : 'No',
-            date: date,
-            ...doc.data()
-          }});
-          res.status(201).json({
-            appointments: appointments
-        });
-        } catch (error) {
-          console.error(error);
-        }
+exports.loadSessions= (req, res, next) => {
+    loadSessionsByRole(res.locals.user, res)
 }
 
 exports.storeSession = async (req, res, next) => {
@@ -124,14 +138,7 @@ exports.storeSession = async (req, res, next) => {
             rRule,
             deleted
         });
-        const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
-        const appointments = querySnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-        res.status(201).json({
-            appointments: appointments
-        });
+        loadSessionsByRole(res.locals.user, res)
       } catch (error) {
         console.error(error);
       }

@@ -29,14 +29,12 @@ function getUserRowData(user){
 }
 
 async function getUserProfile(uid){
-    console.log(uid)
     let data = null
     const userRef = db.collection('users').doc(uid);
     const doc = await userRef.get();
     if (!doc.exists) {
         console.log('No such document!');
     } else {
-        console.log('Document data:', doc.data());
         data = doc.data()
     }
     return data
@@ -129,7 +127,6 @@ exports.loadUsersByRole= async (req, res, next) => {
 
     const users = await getAllUsers();
     const usersData =  users.map((user) => ({id: user.uid, name: user.name? user.name : 'Sin asignar'}));
-    console.log(users)
     res.status(201).json({
         users: usersData
     });
@@ -139,7 +136,6 @@ exports.loadUsersByRole= async (req, res, next) => {
 exports.addRole = async (req, res, next) => {
     const {uid} = req.params;
     const {role} = req.body.user;
-    console.log('editRole')
     await admin.auth()
         .setCustomUserClaims(uid, { role: role })
         .then(() => {
@@ -158,7 +154,6 @@ exports.addRole = async (req, res, next) => {
 }
 
 exports.createUser = async (req, res, next) => {
-    console.log(req.body)
      const {uid, name} = req.body; 
      try {
          await db.collection("users").doc(uid).set({
@@ -175,7 +170,6 @@ exports.createUser = async (req, res, next) => {
 }
 
 exports.updateProfile = async (req, res, next) => {
-    console.log(req.body)
     const {uid} = req.params;
     let user = {}
     if(req.body.user.profession){
