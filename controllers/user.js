@@ -159,6 +159,8 @@ exports.createUser = async (req, res, next) => {
          await db.collection("users").doc(uid).set({
              name
          });
+         await admin.auth()
+            .setCustomUserClaims(uid, { role: 'Sin asignar' })
         const profile = getUserProfile(uid)
         res.status(201).json({
             uid: uid,
