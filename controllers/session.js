@@ -108,6 +108,28 @@ exports.editSession= async (req, res, next) => {
     }
 }
 
+exports.addComment= async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const comment = req.body.comment;
+        const sessionRef = db.collection('sessions').doc(id);
+        const doc = await sessionRef.get();
+        if (!doc.exists) {
+            console.log('No such document!');
+        } else {
+                let comments = doc.data().comments;
+                comments.push(comment)
+                await sessionRef.update({comments: comments});
+                res.status(201).json({
+                    id: id,
+                    ...doc.data()
+                });
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 exports.loadSessions= (req, res, next) => {
     loadSessionsByRole(res.locals.user, res)
 }
@@ -125,6 +147,7 @@ exports.storeSession = async (req, res, next) => {
     const location = appointment.location;
     const rRule = appointment.rRule ? appointment.rRule : null;
     const deleted = false;
+    const comments = appointment.comments ? appointment.comments : []
     try {
         await db.collection("sessions").add({
             title,
@@ -136,6 +159,7 @@ exports.storeSession = async (req, res, next) => {
             therapy,
             location,
             rRule,
+            comments,
             deleted
         });
         loadSessionsByRole(res.locals.user, res)
