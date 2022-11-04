@@ -120,9 +120,10 @@ exports.addComment= async (req, res, next) => {
                 let comments = doc.data().comments;
                 comments.push(comment)
                 await sessionRef.update({comments: comments});
+                const doc2 = await sessionRef.get();
                 res.status(201).json({
                     id: id,
-                    ...doc.data()
+                    ...doc2.data()
                 });
         }
     } catch (error) {
