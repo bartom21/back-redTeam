@@ -108,6 +108,32 @@ exports.editSession= async (req, res, next) => {
     }
 }
 
+async function createCommentNotifications(data){
+    const description = ' agregó un comentario en la sesión: '
+    const trigger = data.comment.author.id
+    const appointment = data.id
+    const date = data.comment.date
+    const read = false
+    let members = [data.patient.id, data.professional.id]
+    console.log(members)
+    members = members.filter(member => member != trigger)
+    console.log(members)
+    for (const member of members) {
+        const target = member
+        const notification ={
+            description,
+            trigger,
+            appointment,
+            date,
+            target,
+            read
+        }
+        console.log(notification)
+        await db.collection("notifications").add(notification)
+    }
+
+}
+
 exports.addComment= async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -121,6 +147,7 @@ exports.addComment= async (req, res, next) => {
                 comments.push(comment)
                 await sessionRef.update({comments: comments});
                 const doc2 = await sessionRef.get();
+                createCommentNotifications({...doc2.data(), id: id, comment: comment})
                 res.status(201).json({
                     id: id,
                     ...doc2.data()

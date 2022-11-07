@@ -5,6 +5,7 @@ const app = express();
 const sessionRoute = require('./routes/sessionRoute');
 const userRoute = require('./routes/userRoute');
 const resourceRoute = require('./routes/resourceRoute');
+const notificationsRoute = require('./routes/notificationRoute');
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
@@ -25,6 +26,7 @@ app.use((req, res, next) => {
 app.use(resourceRoute);
 app.use(sessionRoute);
 app.use(userRoute);
+app.use(notificationsRoute);
 
 
 app.get('/', (req, res) => {
