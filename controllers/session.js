@@ -109,7 +109,14 @@ exports.editSession= async (req, res, next) => {
 }
 
 async function createCommentNotifications(data){
-    const description = ' agregó un comentario en la sesión: '
+    let description = ''
+    if(data.comment.action === 'finalizar'){
+        description = ' agregó un comentario de finalización en la sesión: '
+    }else if(data.comment.action === 'cancelar'){
+        description = ' agregó un comentario de cancelación en la sesión: '
+    }else {
+        description = ' agregó un comentario en la sesión: '
+    }
     const trigger = data.comment.author.id
     const appointment = data.id
     const date = data.comment.date
@@ -137,12 +144,22 @@ async function createCommentNotifications(data){
 exports.addComment= async (req, res, next) => {
     try {
         const { id } = req.params;
-        const comment = req.body.comment;
+        let comment = req.body.comment;
         const sessionRef = db.collection('sessions').doc(id);
         const doc = await sessionRef.get();
         if (!doc.exists) {
             console.log('No such document!');
         } else {
+                if(comment.action){
+                    if(comment.action === 'finalizar'){
+                        await sessionRef.update({state: 'finalized'});
+                    }
+                    if(comment.action === 'cancelar'){
+                        await sessionRef.update({state: 'cancelled'});
+                    }
+                }else{
+                    comment = {...comment, action: 'none'}
+                }
                 let comments = doc.data().comments;
                 comments.push(comment)
                 await sessionRef.update({comments: comments});
@@ -176,6 +193,7 @@ exports.storeSession = async (req, res, next) => {
     const rRule = appointment.rRule ? appointment.rRule : null;
     const deleted = false;
     const comments = appointment.comments ? appointment.comments : []
+    const state = 'active'
     try {
         await db.collection("sessions").add({
             title,
@@ -188,7 +206,8 @@ exports.storeSession = async (req, res, next) => {
             location,
             rRule,
             comments,
-            deleted
+            deleted,
+            state
         });
         loadSessionsByRole(res.locals.user, res)
       } catch (error) {
