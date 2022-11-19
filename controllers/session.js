@@ -31,6 +31,31 @@ async function populateProfile(id){
     return profileComplete
 }
 
+async function populateAppointment(appointment){
+    let commentsOut = []
+    for (const comment of appointment.comments) {
+        const authorComplete = await populateAuthor(comment)
+        commentsOut.push(authorComplete)
+    }
+      let professionalsOut = []
+      for (const professional of appointment.professionals) {
+          const professionalComplete = await populateProfile(professional)
+          professionalsOut.push(professionalComplete)
+      }
+      let patientsOut = []
+      for (const patient of appointment.patients) {
+          const patientComplete = await populateProfile(patient)
+          patientsOut.push(patientComplete)
+      }
+      const newAppointment = {
+          ...appointment,
+          comments: commentsOut,
+          professionals: professionalsOut,
+          patients: patientsOut
+      }
+    return newAppointment
+}
+
 const queryByRole = async (role, res) => {
     console.log(role)
     try {
@@ -190,32 +215,12 @@ exports.editSession= async (req, res, next) => {
     if (!doc.exists) {
       console.log('No such document!');
     } else {
-        const appointment = doc.data()
-        let commentsOut = []
-          for (const comment of appointment.comments) {
-              const authorComplete = await populateAuthor(comment)
-              commentsOut.push(authorComplete)
-          }
-            let professionalsOut = []
-            for (const professional of appointment.professionals) {
-                const professionalComplete = await populateProfile(professional)
-                professionalsOut.push(professionalComplete)
-            }
-            let patientsOut = []
-            for (const patient of appointment.patients) {
-                const patientComplete = await populateProfile(patient)
-                patientsOut.push(patientComplete)
-            }
-            const newAppointment = {
-                ...appointment,
-                comments: commentsOut,
-                professionals: professionalsOut,
-                patients: patientsOut
-            }
-      res.status(201).json({
-        id: id,
-        ...newAppointment
-    });
+        let appointment = doc.data()
+        appointment = populateAppoinment()
+        res.status(201).json({
+            id: id,
+            ...newAppointment
+        });
     }
     } catch (error) {
         console.error(error);
@@ -333,13 +338,32 @@ exports.addRComment= async (req, res, next) => {
                 comment = {...comment, action: 'none'}
             }
             newAppointment = {...newAppointment, comments: [comment]};
-            await createAppoinment(newAppointment)
+            const newDoc = await createAppoinment(newAppointment)
+            let newCreatedAppointment = {
+                id: newDoc.id,
+                ...newDoc.data()
+            }
+            newCreatedAppointment = await populateAppointment(newCreatedAppointment)
             const newExDate = req.body.data.appointment.exDate ? req.body.data.appointment.exDate.concat(',',exDate) : exDate
             await db
-                .collection("sessions")
-                .doc(id)
-                .update({exDate: newExDate});
-            loadSessionsByRole(res.locals.user, res)
+                    .collection("sessions")
+                    .doc(id)
+                    .update({exDate: newExDate});
+            const updatedDocRef = db
+                    .collection("sessions")
+                    .doc(id)
+            const updatedDoc = await updatedDocRef.get()
+            let updatedAppointment = {
+                id: updatedDoc.id,
+                ...updatedDoc.data()
+            }
+            updatedAppointment = await populateAppointment(updatedAppointment)
+            res.status(201).json({
+                appointments: {
+                    updated: updatedAppointment,
+                    added: newCreatedAppointment
+                }
+            })
     } catch (error) {
         console.error(error);
     }
@@ -362,7 +386,7 @@ async function createAppoinment(appointment){
         const deleted = false;
         const comments = appointment.comments ? appointment.comments : []
         const state = appointment.state ? appointment.state : 'active'
-        await db.collection("sessions").add({
+        const response = await db.collection("sessions").add({
             title,
             startDate,
             endDate,
@@ -376,14 +400,24 @@ async function createAppoinment(appointment){
             deleted,
             state
         });
+        const doc = await response.get()
+        return doc
+        
 }
 
 exports.storeSession = async (req, res, next) => {
    //console.log(req.body)
     const appointment = req.body.appointment; 
     try {
-        await createAppoinment(appointment)
-        loadSessionsByRole(res.locals.user, res)
+        const doc = await createAppoinment(appointment)
+        let newAppointment =  {
+            id: doc.id,
+            ...doc.data()
+        }
+        newAppointment = await populateAppointment(newAppointment)
+        res.status(201).json({
+            appointment: newAppointment
+        })
       } catch (error) {
         console.error(error);
       }
