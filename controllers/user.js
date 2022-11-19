@@ -40,44 +40,59 @@ async function getUserProfile(uid){
     return data
 }
 
+async function getUsers(){
+    let data = null
+    const snapshot = await db.collection('users').get()
+    let result = {}
+    snapshot.docs.forEach(doc => result[doc.id] = doc.data());
+    //const doc = snapshot.docs.map((doc) => {
+    //    return { id: doc.id, ...doc.data() }
+    //})
+    return result
+}
+
+async function getAllUsers(nextPageToken){
+
+    // List batch of users can be max 1000 at a time.
+    var _users_list = [];
+    await admin.auth()
+        .listUsers(1000, nextPageToken)
+        .then(async (listUsersResult) =>    {
+            const users = await getUsers()
+
+            for (const userRecord of listUsersResult.users) {
+                const {uid, email, emailVerified, customClaims} = userRecord;
+                //const profile = await getUserProfile(uid)
+                const profile = users[uid];
+
+                if(profile){
+                    const name = profile.name
+                    profile.profession 
+                        ? _users_list.push({uid, name, email, profession: profile.profession  ,emailVerified, customClaims})
+                        :  _users_list.push({uid, name, email, emailVerified, customClaims})
+                }else{
+                    _users_list.push({uid, email, emailVerified, customClaims})
+                }
+                }
+            
+            if (listUsersResult.pageToken) {
+                // List next batch of users.
+                const temp_list =  await getAllUsers(listUsersResult.pageToken);
+                if (temp_list.length > 0) { _users_list = _users_list.concat(temp_list); }
+            }
+
+        })
+        .catch((error) => {
+            console.log('Error listing users:', error);
+            next(error)
+        });
+
+    return _users_list
+};
+
+exports.getAllUsers = getAllUsers;
 
 exports.loadUsers= async (req, res, next) => {
-
-    async function getAllUsers(nextPageToken){
-
-        // List batch of users can be max 1000 at a time.
-        var _users_list = [];
-        await admin.auth()
-            .listUsers(1000, nextPageToken)
-            .then(async (listUsersResult) =>    {
-    
-                for (const userRecord of listUsersResult.users) {
-                    const {uid, email, emailVerified, customClaims} = userRecord;
-                    const profile = await getUserProfile(uid)
-                    if(profile){
-                        const name = profile.name
-                        profile.profession 
-                            ? _users_list.push({uid, name, email, profession: profile.profession  ,emailVerified, customClaims})
-                            :  _users_list.push({uid, name, email, emailVerified, customClaims})
-                    }else{
-                        _users_list.push({uid, email, emailVerified, customClaims})
-                    }
-                    }
-                
-                if (listUsersResult.pageToken) {
-                    // List next batch of users.
-                    const temp_list =  await getAllUsers(listUsersResult.pageToken);
-                    if (temp_list.length > 0) { _users_list = _users_list.concat(temp_list); }
-                }
-    
-            })
-            .catch((error) => {
-                console.log('Error listing users:', error);
-                next(error)
-            });
-    
-        return _users_list
-    };
 
     const users = await getAllUsers();
     const usersData =  users.map((user) => getUserRowData(user));;
