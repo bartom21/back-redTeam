@@ -258,7 +258,7 @@ async function createCommentNotifications(data){
 exports.addComment= async (req, res, next) => {
     try {
         const { id } = req.params;
-        let comment = req.body.comment;
+        let comment = req.body.data.comment;
         const sessionRef = db.collection('sessions').doc(id);
         const doc = await sessionRef.get();
         if (!doc.exists) {
@@ -314,26 +314,54 @@ exports.addComment= async (req, res, next) => {
     }
 }
 
+
+exports.addRComment= async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        let comment = req.body.data.comment;
+        let exDate = req.body.data.exDate;
+            let newAppointment = {...req.body.data.appointment, rRule: null}
+            delete newAppointment.id
+            if(comment.action){
+                if(comment.action === 'finalizar'){
+                    newAppointment = {...newAppointment, state: 'finalized'};
+                }
+                if(comment.action === 'cancelar'){
+                    newAppointment = {...newAppointment, state: 'cancelled'};
+                }
+            }else{
+                comment = {...comment, action: 'none'}
+            }
+            newAppointment = {...newAppointment, comments: [comment]};
+            await createAppoinment(newAppointment)
+            const newExDate = req.body.data.appointment.exDate ? req.body.data.appointment.exDate.concat(',',exDate) : exDate
+            await db
+                .collection("sessions")
+                .doc(id)
+                .update({exDate: newExDate});
+            loadSessionsByRole(res.locals.user, res)
+    } catch (error) {
+        console.error(error);
+    }
+}
+
 exports.loadSessions= (req, res, next) => {
     loadSessionsByRole(res.locals.user, res)
 }
 
-exports.storeSession = async (req, res, next) => {
-   //console.log(req.body)
-    const appointment = req.body.appointment; 
-    const title = appointment.title;
-    const startDate = appointment.startDate;
-    const endDate = appointment.endDate;
-    const allDay = appointment.allDay;
-    const patients = appointment.patients.map((item) => item.id)
-    const professionals = appointment.professionals.map((item) => item.id)
-    const therapy = appointment.therapy;
-    const location = appointment.location;
-    const rRule = appointment.rRule ? appointment.rRule : null;
-    const deleted = false;
-    const comments = appointment.comments ? appointment.comments : []
-    const state = 'active'
-    try {
+async function createAppoinment(appointment){
+        const title = appointment.title;
+        const startDate = appointment.startDate;
+        const endDate = appointment.endDate;
+        const allDay = appointment.allDay;
+        const patients = appointment.patients.map((item) => item.id)
+        const professionals = appointment.professionals.map((item) => item.id)
+        const therapy = appointment.therapy;
+        const location = appointment.location;
+        const rRule = appointment.rRule ? appointment.rRule : null;
+        const deleted = false;
+        const comments = appointment.comments ? appointment.comments : []
+        const state = appointment.state ? appointment.state : 'active'
         await db.collection("sessions").add({
             title,
             startDate,
@@ -348,6 +376,13 @@ exports.storeSession = async (req, res, next) => {
             deleted,
             state
         });
+}
+
+exports.storeSession = async (req, res, next) => {
+   //console.log(req.body)
+    const appointment = req.body.appointment; 
+    try {
+        await createAppoinment(appointment)
         loadSessionsByRole(res.locals.user, res)
       } catch (error) {
         console.error(error);
