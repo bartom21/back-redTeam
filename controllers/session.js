@@ -5,55 +5,11 @@ const admin = require("firebase-admin");
 const router = express.Router();
 const userController = require('../controllers/user');
 
-async function loadAppointments(appointments){ 
+async function populateAppointments(appointments){ 
     let users = await userController.getAllUsers();
     let appointmentsOut = []
     for (const appointment of appointments) {
-
-        let commentsOut = []
-        for (const comment of appointment.comments) {
-            const authorPopulated = users.find(user => user.uid == comment.author);
-            const authorComplete = {
-                id: comment.author,
-                name: authorPopulated.name,
-                role: authorPopulated.customClaims.role
-            }
-            const newComment = {
-                ...comment,
-                author: authorComplete
-            }
-            commentsOut.push(newComment)
-        }
-
-        let professionalsOut = []
-        for (const professional of appointment.professionals) {
-            const professionalPopulated = users.find(user => user.uid == professional && user.customClaims.role == "profesional");
-            //const professionalComplete = await populateProfile(professional)
-            const professionalComplete = {
-                id: professionalPopulated.uid,
-                name: professionalPopulated.name
-            }
-            professionalsOut.push(professionalComplete)
-        }
-
-        let patientsOut = []
-        for (const patient of appointment.patients) {
-            const patientPopulated = users.find(user => user.uid == patient && user.customClaims.role == "paciente"); // ojo se guarda todo, no solo id y nombre
-            //const patientComplete = await populateProfile(patient)
-            const patientComplete = {
-                id: patientPopulated.uid,
-                name: patientPopulated.name
-            }
-            patientsOut.push(patientComplete)
-        }
-
-        const newAppointment = {
-            ...appointment,
-            comments: commentsOut,
-            professionals: professionalsOut,
-            patients: patientsOut
-        }
-        appointmentsOut.push(newAppointment)
+        appointmentsOut.push(populateAppointment(appointment, users))
     }
     return appointmentsOut;
 };
@@ -84,7 +40,52 @@ async function populateProfile(id){
     return profileComplete
 }
 
-async function populateAppointment(appointment){
+function populateAppointment(appointment, users){
+    let commentsOut = []
+    for (const comment of appointment.comments) {
+        const authorPopulated = users.find(user => user.uid == comment.author);
+        const authorComplete = {
+            id: comment.author,
+            name: authorPopulated.name,
+            role: authorPopulated.customClaims.role
+        }
+        const newComment = {
+            ...comment,
+            author: authorComplete
+        }
+        commentsOut.push(newComment)
+    }
+
+    let professionalsOut = []
+    for (const professional of appointment.professionals) {
+        const professionalPopulated = users.find(user => user.uid == professional && user.customClaims.role == "profesional");
+        const professionalComplete = {
+            id: professionalPopulated.uid,
+            name: professionalPopulated.name
+        }
+        professionalsOut.push(professionalComplete)
+    }
+
+    let patientsOut = []
+    for (const patient of appointment.patients) {
+        const patientPopulated = users.find(user => user.uid == patient && user.customClaims.role == "paciente");
+        const patientComplete = {
+            id: patientPopulated.uid,
+            name: patientPopulated.name
+        }
+        patientsOut.push(patientComplete)
+    }
+
+    const newAppointment = {
+        ...appointment,
+        comments: commentsOut,
+        professionals: professionalsOut,
+        patients: patientsOut
+    }
+    return newAppointment
+}
+
+async function populateAsyncAppointment(appointment){
     let commentsOut = []
     for (const comment of appointment.comments) {
         const authorComplete = await populateAuthor(comment)
@@ -121,7 +122,7 @@ const queryByRole = async (role, res) => {
             date: date,
             ...doc.data(),
         }});
-        const appointmentsOut = await loadAppointments(appointments);
+        const appointmentsOut = await populateAppointments(appointments);
         res.status(201).json({
             appointments: appointmentsOut
         });
@@ -141,7 +142,7 @@ const queryAllSessions = async (res) => {
         date: date,
         ...doc.data()
       }});
-      const appointmentsOut = await loadAppointments(appointments);
+      const appointmentsOut = await populateAppointments(appointments);
       res.status(201).json({
           appointments: appointmentsOut
       });
@@ -221,10 +222,10 @@ exports.editSession= async (req, res, next) => {
       console.log('No such document!');
     } else {
         let appointment = doc.data()
-        appointment = populateAppoinment()
+        appointment = await populateAsyncAppointment(appointment)
         res.status(201).json({
             id: id,
-            ...newAppointment
+            ...appointment
         });
     }
     } catch (error) {
@@ -292,32 +293,12 @@ exports.addComment= async (req, res, next) => {
                 if (!doc2.exists) {
                     console.log('No such document!');
                   } else {
-                      const appointment = doc2.data()
-                      let commentsOut = []
-                        for (const comment of appointment.comments) {
-                            const authorComplete = await populateAuthor(comment)
-                            commentsOut.push(authorComplete)
-                        }
-                          let professionalsOut = []
-                          for (const professional of appointment.professionals) {
-                              const professionalComplete = await populateProfile(professional)
-                              professionalsOut.push(professionalComplete)
-                          }
-                          let patientsOut = []
-                          for (const patient of appointment.patients) {
-                              const patientComplete = await populateProfile(patient)
-                              patientsOut.push(patientComplete)
-                          }
-                          const newAppointment = {
-                              ...appointment,
-                              comments: commentsOut,
-                              professionals: professionalsOut,
-                              patients: patientsOut
-                          }
-                    res.status(201).json({
-                      id: id,
-                      ...newAppointment
-                  });}
+                        let appointment = doc2.data()
+                        appointment = await populateAsyncAppointment(appointment)
+                        res.status(201).json({
+                        id: id,
+                        ...appointment
+                    });}
         }
     } catch (error) {
         console.error(error);
@@ -348,7 +329,7 @@ exports.addRComment= async (req, res, next) => {
                 id: newDoc.id,
                 ...newDoc.data()
             }
-            newCreatedAppointment = await populateAppointment(newCreatedAppointment)
+            newCreatedAppointment = await populateAsyncAppointment(newCreatedAppointment)
             const newExDate = req.body.data.appointment.exDate ? req.body.data.appointment.exDate.concat(',',exDate) : exDate
             await db
                     .collection("sessions")
@@ -362,7 +343,7 @@ exports.addRComment= async (req, res, next) => {
                 id: updatedDoc.id,
                 ...updatedDoc.data()
             }
-            updatedAppointment = await populateAppointment(updatedAppointment)
+            updatedAppointment = await populateAsyncAppointment(updatedAppointment)
             res.status(201).json({
                 appointments: {
                     updated: updatedAppointment,
@@ -419,7 +400,7 @@ exports.storeSession = async (req, res, next) => {
             id: doc.id,
             ...doc.data()
         }
-        newAppointment = await populateAppointment(newAppointment)
+        newAppointment = await populateAsyncAppointment(newAppointment)
         res.status(201).json({
             appointment: newAppointment
         })

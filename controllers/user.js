@@ -2,7 +2,6 @@ const express = require('express');
 
 const { db } = require("../firebase");
 const admin = require("firebase-admin");
-const { use } = require('../routes/sessionRoute');
 
 const router = express.Router();
 
