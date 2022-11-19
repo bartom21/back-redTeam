@@ -3,7 +3,60 @@ const express = require('express');
 const { db } = require("../firebase");
 const admin = require("firebase-admin");
 const router = express.Router();
+const userController = require('../controllers/user');
 
+async function loadAppointments(appointments){ 
+    let users = await userController.getAllUsers();
+    let appointmentsOut = []
+    for (const appointment of appointments) {
+
+        let commentsOut = []
+        for (const comment of appointment.comments) {
+            const authorPopulated = users.find(user => user.uid == comment.author);
+            const authorComplete = {
+                id: comment.author,
+                name: authorPopulated.name,
+                role: authorPopulated.customClaims.role
+            }
+            const newComment = {
+                ...comment,
+                author: authorComplete
+            }
+            commentsOut.push(newComment)
+        }
+
+        let professionalsOut = []
+        for (const professional of appointment.professionals) {
+            const professionalPopulated = users.find(user => user.uid == professional && user.customClaims.role == "profesional");
+            //const professionalComplete = await populateProfile(professional)
+            const professionalComplete = {
+                id: professionalPopulated.uid,
+                name: professionalPopulated.name
+            }
+            professionalsOut.push(professionalComplete)
+        }
+
+        let patientsOut = []
+        for (const patient of appointment.patients) {
+            const patientPopulated = users.find(user => user.uid == patient && user.customClaims.role == "paciente"); // ojo se guarda todo, no solo id y nombre
+            //const patientComplete = await populateProfile(patient)
+            const patientComplete = {
+                id: patientPopulated.uid,
+                name: patientPopulated.name
+            }
+            patientsOut.push(patientComplete)
+        }
+
+        const newAppointment = {
+            ...appointment,
+            comments: commentsOut,
+            professionals: professionalsOut,
+            patients: patientsOut
+        }
+        appointmentsOut.push(newAppointment)
+    }
+    return appointmentsOut;
+};
 
 async function populateAuthor(comment){
     const userRef = db.collection('users').doc(comment.author);
@@ -43,31 +96,7 @@ const queryByRole = async (role, res) => {
             date: date,
             ...doc.data(),
         }});
-        let appointmentsOut = []
-        for (const appointment of appointments) {
-            let commentsOut = []
-            for (const comment of appointment.comments) {
-                const authorComplete = await populateAuthor(comment)
-                commentsOut.push(authorComplete)
-            }
-              let professionalsOut = []
-              for (const professional of appointment.professionals) {
-                  const professionalComplete = await populateProfile(professional)
-                  professionalsOut.push(professionalComplete)
-              }
-              let patientsOut = []
-              for (const patient of appointment.patients) {
-                  const patientComplete = await populateProfile(patient)
-                  patientsOut.push(patientComplete)
-              }
-              const newAppointment = {
-                ...appointment,
-                comments: commentsOut,
-                professionals: professionalsOut,
-                patients: patientsOut
-            }
-            appointmentsOut.push(newAppointment)
-        }
+        const appointmentsOut = await loadAppointments(appointments);
         res.status(201).json({
             appointments: appointmentsOut
         });
@@ -76,7 +105,7 @@ const queryByRole = async (role, res) => {
     }
 }
 
-const queryAllSessions = async (res) => {
+const queryAllSessions = async (res) => {   
     try {
         const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
         const appointments = querySnapshot.docs.map((doc) =>{
@@ -87,31 +116,7 @@ const queryAllSessions = async (res) => {
         date: date,
         ...doc.data()
       }});
-      let appointmentsOut = []
-      for (const appointment of appointments) {
-          let commentsOut = []
-          for (const comment of appointment.comments) {
-              const authorComplete = await populateAuthor(comment)
-              commentsOut.push(authorComplete)
-          }
-            let professionalsOut = []
-            for (const professional of appointment.professionals) {
-                const professionalComplete = await populateProfile(professional)
-                professionalsOut.push(professionalComplete)
-            }
-            let patientsOut = []
-            for (const patient of appointment.patients) {
-                const patientComplete = await populateProfile(patient)
-                patientsOut.push(patientComplete)
-            }
-            const newAppointment = {
-              ...appointment,
-              comments: commentsOut,
-              professionals: professionalsOut,
-              patients: patientsOut
-          }
-          appointmentsOut.push(newAppointment)
-      }
+      const appointmentsOut = await loadAppointments(appointments);
       res.status(201).json({
           appointments: appointmentsOut
       });
@@ -236,9 +241,9 @@ async function createCommentNotifications(data){
     const date = data.comment.date
     const read = false
     let members = [...data.patients, ...data.professionals, 'Zn0v9k3YsEUfetldWP7iTUiJe582']
-    console.log(members)
+
     members = members.filter(member => member != trigger)
-    console.log(members)
+
     for (const member of members) {
         const target = member
         const notification ={
@@ -249,7 +254,7 @@ async function createCommentNotifications(data){
             target,
             read
         }
-        console.log(notification)
+
         await db.collection("notifications").add(notification)
     }
 
