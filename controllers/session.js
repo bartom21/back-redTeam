@@ -207,19 +207,31 @@ exports.editSession= async (req, res, next) => {
         const { id } = req.params;
         console.log(req.body)
         let data = req.body.appointment[id];
-        if(data.professionals){
-            const professionals = data.professionals.map((item) => item.id)
-            data = {
-                ...data,
-                professionals: professionals
+        if(data.professionals || data.patients){
+            const oldSessionRef = db.collection('sessions').doc(id);
+            const oldDoc = await oldSessionRef.get();
+            const oldAppointment = oldDoc.data()
+            let newProfessionals = []
+            let newPatients = []
+            if(data.professionals){
+                const oldProfessionals = oldAppointment.professionals
+                const professionals = data.professionals.map((item) => item.id)
+                data = {
+                    ...data,
+                    professionals: professionals
+                }
+                newProfessionals = professionals.filter(x => !oldProfessionals.includes(x));
             }
-        }
-        if(data.patients){
-            const patients = data.patients.map((item) => item.id)
-            data = {
-                ...data,
-                patients: patients
+            if(data.patients){
+                const oldPatients = oldAppointment.patients
+                const patients = data.patients.map((item) => item.id)
+                data = {
+                    ...data,
+                    patients: patients
+                }
+                newPatients = patients.filter(x => !oldPatients.includes(x));
             }
+            createSessionNotifications({id:id, professionals: newProfessionals, patients: newPatients})
         }
         await db
                 .collection("sessions")
@@ -274,6 +286,29 @@ async function createCommentNotifications(data){
     }
 
 }
+
+async function createSessionNotifications(data){
+    let description = 'Se le ha asignado una nueva sesión: '
+    const appointment = data.id
+    const date = new Date().toLocaleDateString('en-GB').concat(' ', new Date().toLocaleTimeString());
+    const read = false
+    let members = [...data.patients, ...data.professionals]
+
+    for (const member of members) {
+        const target = member
+        const notification ={
+            description,
+            appointment,
+            date,
+            target,
+            read
+        }
+
+        await db.collection("notifications").add(notification)
+    }
+
+}
+
 
 exports.addComment= async (req, res, next) => {
     try {
@@ -338,6 +373,7 @@ exports.addRComment= async (req, res, next) => {
                 id: newDoc.id,
                 ...newDoc.data()
             }
+            createCommentNotifications({...newCreatedAppointment, comment: comment})
             newCreatedAppointment = await populateAsyncAppointment(newCreatedAppointment)
             const newExDate = req.body.data.appointment.exDate ? req.body.data.appointment.exDate.concat(',',exDate) : exDate
             await db
@@ -409,6 +445,7 @@ exports.storeSession = async (req, res, next) => {
             id: doc.id,
             ...doc.data()
         }
+        createSessionNotifications(newAppointment)
         newAppointment = await populateAsyncAppointment(newAppointment)
         res.status(201).json({
             appointment: newAppointment
