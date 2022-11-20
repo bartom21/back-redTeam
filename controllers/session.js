@@ -131,21 +131,28 @@ const queryByRole = async (role, res) => {
     }
 }
 
-const queryAllSessions = async (res) => {   
-    try {
-        const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
-        const appointments = querySnapshot.docs.map((doc) =>{
-        const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
-        return {
+
+const querySessions = async() => {
+    const querySnapshot = await db.collection("sessions").where('deleted','==', false).get();
+    const appointments = querySnapshot.docs.map((doc) =>{
+    const date = new Date( doc.data().startDate).toLocaleDateString('en-GB').concat(' ', new Date( doc.data().startDate).toLocaleTimeString());
+    return {
         id: doc.id,
         isRecurrent: doc.data().rRule ? 'Si' : 'No',
         date: date,
         ...doc.data()
-      }});
-      const appointmentsOut = await populateAppointments(appointments);
-      res.status(201).json({
-          appointments: appointmentsOut
-      });
+    }});
+    const appointmentsOut = await populateAppointments(appointments);
+    return appointmentsOut;
+}
+
+
+const queryAllSessions = async (res) => {   
+    try {
+        const appointmentsOut = await querySessions();
+        res.status(201).json({
+            appointments: appointmentsOut
+        });
     } catch (error) {
       console.error(error);
     }
@@ -180,6 +187,8 @@ const loadSessionsByRole = (user, res) => {
         loadEmptySessions(res)
     }
 }
+
+exports.querySessions = querySessions;
 
 exports.deleteSession= async (req, res, next) => {
     try {
