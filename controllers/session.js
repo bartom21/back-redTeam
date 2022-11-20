@@ -266,6 +266,29 @@ async function createCommentNotifications(data){
 
 }
 
+async function createSessionNotifications(data){
+    let description = 'Se le ha asignado una nueva sesión: '
+    const appointment = data.id
+    const date = new Date().toLocaleDateString('en-GB').concat(' ', new Date().toLocaleTimeString());
+    const read = false
+    let members = [...data.patients, ...data.professionals]
+
+    for (const member of members) {
+        const target = member
+        const notification ={
+            description,
+            appointment,
+            date,
+            target,
+            read
+        }
+
+        await db.collection("notifications").add(notification)
+    }
+
+}
+
+
 exports.addComment= async (req, res, next) => {
     try {
         const { id } = req.params;
@@ -329,6 +352,7 @@ exports.addRComment= async (req, res, next) => {
                 id: newDoc.id,
                 ...newDoc.data()
             }
+            createCommentNotifications({...newCreatedAppointment, comment: comment})
             newCreatedAppointment = await populateAsyncAppointment(newCreatedAppointment)
             const newExDate = req.body.data.appointment.exDate ? req.body.data.appointment.exDate.concat(',',exDate) : exDate
             await db
@@ -400,6 +424,7 @@ exports.storeSession = async (req, res, next) => {
             id: doc.id,
             ...doc.data()
         }
+        createSessionNotifications(newAppointment)
         newAppointment = await populateAsyncAppointment(newAppointment)
         res.status(201).json({
             appointment: newAppointment

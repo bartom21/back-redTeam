@@ -5,15 +5,18 @@ const { db } = require("../firebase");
 const router = express.Router();
 
 async function populateTrigger(notification){
-    const userRef = db.collection('users').doc(notification.trigger);
-    const docUser = await userRef.get();
-    const triggerComplete = {
-        id: notification.trigger,
-        name: docUser.data().name
-    }
-    const newNotification = {
-        ...notification,
-        trigger: triggerComplete
+    let newNotification = notification
+    if(notification.trigger){
+        const userRef = db.collection('users').doc(notification.trigger);
+        const docUser = await userRef.get();
+        const triggerComplete = {
+            id: notification.trigger,
+            name: docUser.data().name
+        }
+        newNotification = {
+            ...notification,
+            trigger: triggerComplete
+        }
     }
     return newNotification
 }
@@ -28,8 +31,8 @@ exports.loadNotifications= async (req, res, next) => {
             }});
             let notificationsOut = []
             for (const notification of notifications) {
-                const triggerComplete = await populateTrigger(notification)
-                notificationsOut.push(triggerComplete)
+                    const triggerComplete = await populateTrigger(notification)
+                    notificationsOut.push(triggerComplete)
             }
             res.status(201).json({
             notifications: notificationsOut
