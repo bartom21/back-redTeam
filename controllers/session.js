@@ -198,19 +198,31 @@ exports.editSession= async (req, res, next) => {
         const { id } = req.params;
         console.log(req.body)
         let data = req.body.appointment[id];
-        if(data.professionals){
-            const professionals = data.professionals.map((item) => item.id)
-            data = {
-                ...data,
-                professionals: professionals
+        if(data.professionals || data.patients){
+            const oldSessionRef = db.collection('sessions').doc(id);
+            const oldDoc = await oldSessionRef.get();
+            const oldAppointment = oldDoc.data()
+            let newProfessionals = []
+            let newPatients = []
+            if(data.professionals){
+                const oldProfessionals = oldAppointment.professionals
+                const professionals = data.professionals.map((item) => item.id)
+                data = {
+                    ...data,
+                    professionals: professionals
+                }
+                newProfessionals = professionals.filter(x => !oldProfessionals.includes(x));
             }
-        }
-        if(data.patients){
-            const patients = data.patients.map((item) => item.id)
-            data = {
-                ...data,
-                patients: patients
+            if(data.patients){
+                const oldPatients = oldAppointment.patients
+                const patients = data.patients.map((item) => item.id)
+                data = {
+                    ...data,
+                    patients: patients
+                }
+                newPatients = patients.filter(x => !oldPatients.includes(x));
             }
+            createSessionNotifications({id:id, professionals: newProfessionals, patients: newPatients})
         }
         await db
                 .collection("sessions")
