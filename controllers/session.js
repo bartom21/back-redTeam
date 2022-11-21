@@ -1,6 +1,4 @@
 const express = require('express');
-const rrule = require('rrule')
-
 const { db } = require("../firebase");
 const admin = require("firebase-admin");
 const router = express.Router();
@@ -232,7 +230,7 @@ exports.editSession= async (req, res, next) => {
                 }
                 newPatients = patients.filter(x => !oldPatients.includes(x));
             }
-            createSessionNotifications({id:id, professionals: newProfessionals, patients: newPatients})
+            createSessionNotifications({id:id, professionals: newProfessionals, patients: newPatients}, "asignacion")
         }
         await db
                 .collection("sessions")
@@ -288,8 +286,17 @@ async function createCommentNotifications(data){
 
 }
 
-async function createSessionNotifications(data){
-    let description = 'Se le ha asignado una nueva sesión: '
+async function createSessionNotifications(data, option = ""){
+    const descriptions = {
+        "asignacion": 'Se le ha asignado una nueva sesión: ',
+        "recordatorio": 'Recordatorio de sesión: '
+    }
+    const description = descriptions[option]
+
+    if(description === undefined){
+        console.error("Error");
+    }
+
     const appointment = data.id
     const date = new Date().toLocaleDateString('en-GB').concat(' ', new Date().toLocaleTimeString());
     const read = false
@@ -309,6 +316,8 @@ async function createSessionNotifications(data){
     }
 
 }
+
+exports.createSessionNotifications = createSessionNotifications;
 
 
 exports.addComment= async (req, res, next) => {
@@ -446,7 +455,7 @@ exports.storeSession = async (req, res, next) => {
             id: doc.id,
             ...doc.data()
         }
-        createSessionNotifications(newAppointment)
+        createSessionNotifications(newAppointment, "asignacion")
         newAppointment = await populateAsyncAppointment(newAppointment)
         res.status(201).json({
             appointment: newAppointment
@@ -455,24 +464,3 @@ exports.storeSession = async (req, res, next) => {
         console.error(error);
       }
 }
-
-exports.testRrule = async (req, res, next) => {
-    //console.log(req.body)
-     try {
-        const rule = new rrule.rrulestr('RRULE:INTERVAL=1;FREQ=DAILY;COUNT=10')
-        var date = new Date();
-
-        // add a day
-        date.setDate(date.getDate() + 1);
-          // Get all occurrence dates (Date instances):
-         console.log('rrule, ',rule.between(new Date(), date))
-          
-          // Get a slice:
-         // rule.between(datetime(2012, 8, 1), datetime(2012, 9, 1))
-         res.status(201).json({
-             response:'OK'
-         })
-       } catch (error) {
-         console.error(error);
-       }
- }

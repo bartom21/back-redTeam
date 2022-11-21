@@ -2,46 +2,51 @@ const express = require('express');
 const { db } = require("../firebase");
 const router = express.Router();
 const sessionController = require('../controllers/session');
-const userController = require('../controllers/user');
-
-/*
+//const userController = require('../controllers/user');
+const rrule = require('rrule')
 const cron = require("node-cron");
-const nodemailer = require("nodemailer");
-app = express();
+//const nodemailer = require("nodemailer");
 
 //check every hour
-cron.schedule("0 * * * *", async function () {
-
-    const users = await userController.getAllUsers();
+cron.schedule("* * * * *", async () => {
+    //const users = await userController.getAllUsers();
+    console.log("corrio");
     const appointments = await sessionController.querySessions();
-    for (const appointment in appointments){
-        if(new Date(appointment.endDate) >= new Date()):
-            for (const comment of appointment.comments) {
-                const authorComplete = await populateAuthor(comment)
-                commentsOut.push(authorComplete)
-            }
-            let professionalsOut = []
-            for (const professional of appointment.professionals) {
-                const professionalComplete = await populateProfile(professional)
-                professionalsOut.push(professionalComplete)
-            }
-            let patientsOut = []
-            for (const patient of appointment.patients) {
-                const patientComplete = await populateProfile(patient)
-                patientsOut.push(patientComplete)
-            }
-            const newAppointment = {
-                ...appointment,
-                comments: commentsOut,
-                professionals: professionalsOut,
-                patients: patientsOut
-            }
-            return newAppointment
 
+    const today = new Date();
+    const tomorrow =  new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    for (const appointment of appointments){
+        let eventsInRange = []
+        if(appointment.rRule){ //si es recurrente
+            let rruleSet = new rrule.RRuleSet()
+            rruleSet.rrule(new rrule.rrulestr(appointment.rRule,{dtstart: new Date(appointment.startDate)}))
+
+            // + "\nEXDATE:"+appointment.exDate
+            
+            if (appointment.exDate){
+                rruleSet = rrule.rrulestr((rruleSet.valueOf().join("\n"))+"\nEXDATE:"+appointment.exDate)
+            }
+            
+            // Get all occurrence dates (Date instances):
+            
+            eventsInRange = rruleSet.between(today, tomorrow)
+            console.log(eventsInRange)
+            console.log(rruleSet.valueOf())
+        }
+        console.log("fechas --> ",tomorrow, today, new Date(appointment.startDate))
+        console.log(today < (new Date(appointment.startDate)))
+        console.log(new Date(appointment.startDate) <= tomorrow)
+        if((eventsInRange.length > 0)|| ((today < (new Date(appointment.startDate))) && (new Date(appointment.startDate) <= tomorrow))){
+            console.log("Entro", appointment.startDate);
+            const professionals = appointment.professionals.map((item) => item.id)
+            const patients = appointment.patients.map((item) => item.id)
+            await sessionController.createSessionNotifications({...appointment, professionals, patients},"recordatorio");
+        }
     };
 });
  
-
+/*
 function mailService(user) {
   let mailTransporter = nodemailer.createTransport({
     service: "gmail",
