@@ -1,4 +1,5 @@
 const express = require('express');
+const rrule = require('rrule')
 
 const { db } = require("../firebase");
 const admin = require("firebase-admin");
@@ -445,3 +446,24 @@ exports.storeSession = async (req, res, next) => {
         console.error(error);
       }
 }
+
+exports.testRrule = async (req, res, next) => {
+    //console.log(req.body)
+     try {
+        const rule = new rrule.rrulestr('RRULE:INTERVAL=1;FREQ=DAILY;COUNT=10')
+        var date = new Date();
+
+        // add a day
+        date.setDate(date.getDate() + 1);
+          // Get all occurrence dates (Date instances):
+         console.log('rrule, ',rule.between(new Date(), date))
+          
+          // Get a slice:
+         // rule.between(datetime(2012, 8, 1), datetime(2012, 9, 1))
+         res.status(201).json({
+             response:'OK'
+         })
+       } catch (error) {
+         console.error(error);
+       }
+ }
