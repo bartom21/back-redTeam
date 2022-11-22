@@ -8,9 +8,8 @@ const cron = require("node-cron");
 //const nodemailer = require("nodemailer");
 
 //check every hour
-cron.schedule("* * * * *", async () => {
+cron.schedule("*/10 * * * *", async () => {
     //const users = await userController.getAllUsers();
-    console.log("corrio");
     const appointments = await sessionController.querySessions();
 
     const today = new Date();
@@ -38,14 +37,8 @@ cron.schedule("* * * * *", async () => {
                     .doc(appointment.id)
                     .update({notified: false});
             }
-            console.log(eventsInRange)
-            console.log(rruleSet.valueOf())
         }
-        console.log("fechas --> ",tomorrow, today, new Date(appointment.startDate))
-        console.log(today < (new Date(appointment.startDate)))
-        console.log(new Date(appointment.startDate) <= tomorrow)
         if((!appointment.notified)&&((eventsInRange.length > 0)|| ((today < (new Date(appointment.startDate))) && (new Date(appointment.startDate) <= tomorrow)))){
-            console.log("Entro", appointment.startDate);
             const professionals = appointment.professionals.map((item) => item.id)
             const patients = appointment.patients.map((item) => item.id)
             await sessionController.createSessionNotifications({...appointment, professionals, patients},"recordatorio");

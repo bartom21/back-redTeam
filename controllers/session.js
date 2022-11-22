@@ -110,7 +110,6 @@ async function populateAsyncAppointment(appointment){
 }
 
 const queryByRole = async (role, res) => {
-    console.log(role)
     try {
         const querySnapshot = await db.collection("sessions").where('deleted','==', false).where(role+'s', 'array-contains',res.locals.user.uid).get();
         const appointments = querySnapshot.docs.map((doc) =>{
