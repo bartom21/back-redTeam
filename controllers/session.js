@@ -264,7 +264,7 @@ async function createCommentNotifications(data){
     }
     const trigger = data.comment.author
     const appointment = data.id
-    const date = data.comment.date
+    const date = new Date().toISOString()
     const read = false
     let members = [...data.patients, ...data.professionals, 'Zn0v9k3YsEUfetldWP7iTUiJe582']
 
@@ -298,7 +298,7 @@ async function createSessionNotifications(data, option = ""){
     }
 
     const appointment = data.id
-    const date = new Date().toLocaleDateString('en-GB').concat(' ', new Date().toLocaleTimeString());
+    const date = new Date().toISOString()
     const read = false
     let members = [...data.patients, ...data.professionals]
 
@@ -425,6 +425,7 @@ async function createAppoinment(appointment){
         const location = appointment.location;
         const rRule = appointment.rRule ? appointment.rRule : null;
         const deleted = false;
+        const notified = false;
         const comments = appointment.comments ? appointment.comments : []
         const state = appointment.state ? appointment.state : 'active'
         const response = await db.collection("sessions").add({
@@ -439,7 +440,8 @@ async function createAppoinment(appointment){
             rRule,
             comments,
             deleted,
-            state
+            state,
+            notified
         });
         const doc = await response.get()
         return doc

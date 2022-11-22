@@ -8,7 +8,7 @@ const cron = require("node-cron");
 //const nodemailer = require("nodemailer");
 
 //check every hour
-cron.schedule("0 0 * * *", async () => {
+cron.schedule("* * * * *", async () => {
     //const users = await userController.getAllUsers();
     console.log("corrio");
     const appointments = await sessionController.querySessions();
@@ -16,6 +16,7 @@ cron.schedule("0 0 * * *", async () => {
     const today = new Date();
     const tomorrow =  new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setMinutes(tomorrow.getMinutes() - 15);
     for (const appointment of appointments){
         let eventsInRange = []
         if(appointment.rRule){ //si es recurrente
@@ -31,17 +32,27 @@ cron.schedule("0 0 * * *", async () => {
             // Get all occurrence dates (Date instances):
             
             eventsInRange = rruleSet.between(today, tomorrow)
+            if(eventsInRange.length === 0 && appointment.notified){
+                await db
+                    .collection("sessions")
+                    .doc(appointment.id)
+                    .update({notified: false});
+            }
             console.log(eventsInRange)
             console.log(rruleSet.valueOf())
         }
         console.log("fechas --> ",tomorrow, today, new Date(appointment.startDate))
         console.log(today < (new Date(appointment.startDate)))
         console.log(new Date(appointment.startDate) <= tomorrow)
-        if((eventsInRange.length > 0)|| ((today < (new Date(appointment.startDate))) && (new Date(appointment.startDate) <= tomorrow))){
+        if((!appointment.notified)&&((eventsInRange.length > 0)|| ((today < (new Date(appointment.startDate))) && (new Date(appointment.startDate) <= tomorrow)))){
             console.log("Entro", appointment.startDate);
             const professionals = appointment.professionals.map((item) => item.id)
             const patients = appointment.patients.map((item) => item.id)
             await sessionController.createSessionNotifications({...appointment, professionals, patients},"recordatorio");
+            await db
+                    .collection("sessions")
+                    .doc(appointment.id)
+                    .update({notified: true});
         }
     };
 });
