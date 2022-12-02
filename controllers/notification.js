@@ -8,8 +8,10 @@ const cron = require("node-cron");
 //const nodemailer = require("nodemailer");
 
 //check every hour
-cron.schedule("*/10 * * * *", async () => {
+
+//cron.schedule("*/10 * * * *", async () => {
     //const users = await userController.getAllUsers();
+    /*
     const appointments = await sessionController.querySessions();
 
     const today = new Date();
@@ -49,7 +51,7 @@ cron.schedule("*/10 * * * *", async () => {
         }
     };
 });
- 
+*/
 /*
 function mailService(user) {
   let mailTransporter = nodemailer.createTransport({
