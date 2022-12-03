@@ -200,6 +200,49 @@ exports.deleteSession= async (req, res, next) => {
     }
 }
 
+exports.loadUnpaidSessions= async (req, res, next) => {
+    try {
+        const querySnapshotTherapies = await db.collection("therapies").get();
+        const therapies = querySnapshotTherapies.docs.map((doc) =>{
+            return {
+            id: doc.id,
+            ...doc.data()
+          }});
+        const querySnapshot = await db.collection("sessions").where('deleted','==', false).where('state','==','finalized').get();
+        const endedAppointments = querySnapshot.docs.map((doc) =>{
+            return {
+            id: doc.id,
+            ...doc.data(),
+        }});
+        const unpaidAppointments = []
+        for (const appointment of endedAppointments) {
+            const therapy = therapies.find((item) => item.id === appointment.therapy)
+            const duration = Math.abs(new Date(appointment.endDate) - new Date(appointment.startDate)) / 36e5
+            if(therapy && therapy.rate && duration > 0){
+                for (const patient of appointment.patients) {
+                    if(!appointment.invoiced.includes(patient)){
+                        const amount = therapy.rate * duration
+                        const unpaidAppointment = {
+                            id: appointment.id,
+                            title: appointment.title,
+                            startDate: appointment.startDate,
+                            endDate: appointment.endDate,
+                            patient,
+                            amount
+                        }
+                        unpaidAppointments.push(unpaidAppointment)
+                    }
+                }
+            }
+        }
+        res.status(201).json({
+            appointments: unpaidAppointments
+        });
+    } catch (error) {
+      console.error(error);
+    }
+}
+
 exports.editSession= async (req, res, next) => {
     try {
         const { id } = req.params;

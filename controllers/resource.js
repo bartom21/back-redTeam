@@ -20,6 +20,22 @@ exports.loadTherapies= async (req, res, next) => {
         }
 }
 
+exports.updateTherapy = async (req, res, next) => {
+  const {id} = req.params;
+  const {rate} = req.body
+   try {
+       await db.collection("therapies").doc(id).update({rate:rate});
+       const therapyRef = db.collection('therapies').doc(id);
+       const doc = await therapyRef.get();
+        res.status(201).json({
+          id,
+          ...doc.data()
+          });
+      }catch (error) {
+       console.error(error);
+     }
+}
+
 exports.loadLocations= async (req, res, next) => {
   try {
       const querySnapshot = await db.collection("locations").get();

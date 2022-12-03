@@ -9,6 +9,8 @@ router.get('/therapies', resourceController.loadTherapies);
 
 router.get('/locations', resourceController.loadLocations);
 
+router.put('/updateRate/:id', resourceController.updateTherapy);
+
 
 
 module.exports = router;

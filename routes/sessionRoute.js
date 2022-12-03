@@ -15,6 +15,8 @@ router.put('/session/:id', isAuth, sessionController.editSession);
 
 router.get('/calendar', isAuth, sessionController.loadSessions);
 
+router.get('/unpaidSessions', isAuth, sessionController.loadUnpaidSessions);
+
 router.post('/session', isAuth, sessionController.storeSession);
 
 
