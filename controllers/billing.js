@@ -7,10 +7,13 @@ exports.loadInvoices= async (req, res, next) => {
     try {
         const querySnapshot = await db.collection("invoices").get();
         const invoices = querySnapshot.docs.map((doc) =>{
-        return {
-        id: doc.id,
-        ...doc.data()
-      }});
+            const invoice = doc.data()
+            const amount = invoice.sessions.map(item => item.amount).reduce((prev, next) => prev + next)
+            return {
+            id: doc.id,
+            ...invoice,
+            amount
+        }});
       res.status(201).json({
         invoices: invoices
     });
@@ -34,9 +37,12 @@ exports.storeInvoice= async (req, res, next) => {
                 paid
             });
             const doc = await response.get()
+            const oldInvoice = doc.data()
+            const amount = oldInvoice.sessions.map(item => item.amount).reduce((prev, next) => prev + next)
             let newInvoice =  {
                 id: doc.id,
-                ...doc.data()
+                ...oldInvoice,
+                amount
             }
             for(const appointment of newInvoice.sessions){
                 const oldSessionRef = db.collection('sessions').doc(appointment.id);
