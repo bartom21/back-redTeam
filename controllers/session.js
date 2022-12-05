@@ -208,6 +208,12 @@ exports.loadUnpaidSessions= async (req, res, next) => {
             id: doc.id,
             ...doc.data()
           }});
+          const querySnapshotDiscounts = await db.collection("discounts").get();
+          const discounts = querySnapshotDiscounts.docs.map((doc) =>{
+              return {
+              id: doc.id,
+              ...doc.data()
+            }});
         const querySnapshot = await db.collection("sessions").where('deleted','==', false).where('state','==','finalized').get();
         const endedAppointments = querySnapshot.docs.map((doc) =>{
             return {
@@ -220,13 +226,17 @@ exports.loadUnpaidSessions= async (req, res, next) => {
             const duration = Math.abs(new Date(appointment.endDate) - new Date(appointment.startDate)) / 36e5
             if(therapy && therapy.rate && duration > 0){
                 for (const patient of appointment.patients) {
+                    //console.log(appointment)
+                    let discount = discounts.find((item) => item.patient === patient)
+                    discount = discount ? discount.rate : 0
                     if(!appointment.invoiced.includes(patient)){
-                        const amount = therapy.rate * duration
+                        const amount = therapy.rate * duration * ((100- discount)/100)
                         const unpaidAppointment = {
                             id: appointment.id,
                             title: appointment.title,
                             startDate: appointment.startDate,
                             endDate: appointment.endDate,
+                            therapy: therapy.name,
                             patient,
                             amount
                         }
@@ -468,6 +478,7 @@ async function createAppoinment(appointment){
         const rRule = appointment.rRule ? appointment.rRule : null;
         const deleted = false;
         const notified = false;
+        const invoiced = []
         const comments = appointment.comments ? appointment.comments : []
         const state = appointment.state ? appointment.state : 'active'
         const response = await db.collection("sessions").add({
@@ -483,7 +494,8 @@ async function createAppoinment(appointment){
             comments,
             deleted,
             state,
-            notified
+            notified,
+            invoiced
         });
         const doc = await response.get()
         return doc
