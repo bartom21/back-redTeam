@@ -8,7 +8,7 @@ const loadInvoices = async (req, res, next) => {
         const querySnapshot = await db.collection("invoices").where('deleted','==', false).get();
         const invoices = querySnapshot.docs.map((doc) =>{
             const invoice = doc.data()
-            const amount = invoice.sessions.map(item => item.amount).reduce((prev, next) => prev + next)
+            const amount = invoice.sessions.map(item => parseFloat(item.amount)).reduce((prev, next) => prev + next).toFixed(2)
             return {
             id: doc.id,
             ...invoice,
@@ -42,14 +42,14 @@ exports.storeInvoice= async (req, res, next) => {
             });
             const doc = await response.get()
             const oldInvoice = doc.data()
-            const amount = oldInvoice.sessions.map(item => item.amount).reduce((prev, next) => prev + next)
+            const amount = oldInvoice.sessions.map(item => parseFloat(item.amount)).reduce((prev, next) => prev + next).toFixed(2)
             let newInvoice =  {
                 id: doc.id,
                 ...oldInvoice,
                 amount
             }
             for(const appointment of newInvoice.sessions){
-                const oldSessionRef = db.collection('sessions').doc(appointment.id);
+                const oldSessionRef = db.collection('sessions').doc(appointment.sessionId);
                 const oldDoc = await oldSessionRef.get();
                 const oldAppointment = oldDoc.data()
                 const invoiced = oldAppointment.invoiced
@@ -57,7 +57,7 @@ exports.storeInvoice= async (req, res, next) => {
                     invoiced.push(newInvoice.patient)
                     await db
                         .collection("sessions")
-                        .doc(appointment.id)
+                        .doc(appointment.sessionId)
                         .update({invoiced: invoiced});
                 }
             }
@@ -86,7 +86,7 @@ exports.editInvoice= async (req, res, next) => {
                 .update(newInvoice);
             const removedSessions = oldInvoice.sessions.filter(x => !invoice.sessions.includes(x));
             for(const appointment of removedSessions){
-                const oldSessionRef = db.collection('sessions').doc(appointment.id);
+                const oldSessionRef = db.collection('sessions').doc(appointment.sessionId);
                 const oldDoc = await oldSessionRef.get();
                 const oldAppointment = oldDoc.data()
                 let invoiced = oldAppointment.invoiced
@@ -95,12 +95,12 @@ exports.editInvoice= async (req, res, next) => {
                     console.log()
                     await db
                         .collection("sessions")
-                        .doc(appointment.id)
+                        .doc(appointment.sessionId)
                         .update({invoiced: invoiced});
                 }
             }
             for(const appointment of invoice.sessions){
-                const oldSessionRef = db.collection('sessions').doc(appointment.id);
+                const oldSessionRef = db.collection('sessions').doc(appointment.sessionId);
                 const oldDoc = await oldSessionRef.get();
                 const oldAppointment = oldDoc.data()
                 const invoiced = oldAppointment.invoiced
@@ -108,11 +108,11 @@ exports.editInvoice= async (req, res, next) => {
                     invoiced.push(invoice.patient)
                     await db
                         .collection("sessions")
-                        .doc(appointment.id)
+                        .doc(appointment.sessionId)
                         .update({invoiced: invoiced});
                 }
             }
-            const amount = invoice.sessions.map(item => item.amount).reduce((prev, next) => prev + next)
+            const amount = invoice.sessions.map(item => parseFloat(item.amount)).reduce((prev, next) => prev + next).toFixed(2)
             res.status(201).json({
                 ...newInvoice,
                 amount,
@@ -136,7 +136,7 @@ exports.deleteInvoice= async (req, res, next) => {
             const invoiceDoc = await invoiceRef.get();
             const invoice = invoiceDoc.data()
             for(const appointment of invoice.sessions){
-                const oldSessionRef = db.collection('sessions').doc(appointment.id);
+                const oldSessionRef = db.collection('sessions').doc(appointment.sessionId);
                 const oldDoc = await oldSessionRef.get();
                 const oldAppointment = oldDoc.data()
                 let invoiced = oldAppointment.invoiced
@@ -145,7 +145,7 @@ exports.deleteInvoice= async (req, res, next) => {
                     console.log()
                     await db
                         .collection("sessions")
-                        .doc(appointment.id)
+                        .doc(appointment.sessionId)
                         .update({invoiced: invoiced});
                 }
             }

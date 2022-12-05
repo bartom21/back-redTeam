@@ -230,9 +230,10 @@ exports.loadUnpaidSessions= async (req, res, next) => {
                     let discount = discounts.find((item) => item.patient === patient)
                     discount = discount ? discount.rate : 0
                     if(!appointment.invoiced.includes(patient)){
-                        const amount = therapy.rate * duration * ((100- discount)/100)
+                        const amount = (therapy.rate * duration * ((100- discount)/100)).toFixed(2)
                         const unpaidAppointment = {
-                            id: appointment.id,
+                            id: appointment.id+patient,
+                            sessionId: appointment.id,
                             title: appointment.title,
                             startDate: appointment.startDate,
                             endDate: appointment.endDate,
