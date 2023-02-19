@@ -5,9 +5,13 @@ const router = express.Router();
 const isAuth = require('../middleware/is-auth');
 const resourceController = require('../controllers/resource');
 
-router.get('/therapies', resourceController.loadTherapies);
+router.get('/therapies', isAuth, resourceController.loadTherapies);
 
-router.get('/locations', resourceController.loadLocations);
+router.get('/locations', isAuth, resourceController.loadLocations);
+
+router.put('/updateLocationRate/:id', isAuth, resourceController.updateLocation);
+
+//router.get('/locationsAvailable', resourceController.loadAvailableLocations);
 
 
 

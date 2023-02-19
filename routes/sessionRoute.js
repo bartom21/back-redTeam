@@ -15,7 +15,7 @@ router.put('/session/:id', isAuth, sessionController.editSession);
 
 router.get('/calendar', isAuth, sessionController.loadSessions);
 
-router.post('/session', isAuth, sessionController.storeSession);
+router.post('/session', sessionController.storeSession);
 
 
 

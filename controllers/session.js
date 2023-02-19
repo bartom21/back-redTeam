@@ -3,6 +3,62 @@ const { db } = require("../firebase");
 const admin = require("firebase-admin");
 const router = express.Router();
 const userController = require('../controllers/user');
+const resourceController = require('../controllers/resource');
+const rrule = require('rrule')
+
+
+async function checkIfLocationIsAvailable(newAppointment){
+    try {
+        const appointments = await querySessions();
+        const locations = await resourceController.getLocations();
+        const start = new Date(newAppointment.startDate);
+        const end =  new Date(newAppointment.endDate);
+        
+        let salasOcupadas = new Set();
+        for (const appointment of appointments){
+            let eventsInRange = []
+            
+            if(appointment.rRule){ //si es recurrente
+                let rruleSet = new rrule.RRuleSet()
+                rruleSet.rrule(new rrule.rrulestr(appointment.rRule,{dtstart: new Date(appointment.startDate)}))
+    
+                // + "\nEXDATE:"+appointment.exDate
+                
+                if (appointment.exDate){
+                    rruleSet = rrule.rrulestr((rruleSet.valueOf().join("\n"))+"\nEXDATE:"+appointment.exDate)
+                }
+                
+                // Get all occurrence dates (Date instances):
+                
+                eventsInRange = rruleSet.between(start, end)
+            }
+            if( (eventsInRange.length > 0)|| ( ( start <= (new Date(appointment.startDate)) ) && (new Date(appointment.startDate) <= end)) ){
+            salasOcupadas.add(appointment.location)
+            }
+        }
+    
+        
+        const salasOcupadass = Array.from(salasOcupadas.values())
+        const salasLibres = locations.filter(x => x.id !== newAppointment.location)
+        
+        let estaLibre = true
+        for(const sala of salasOcupadass){
+            if(sala === newAppointment.location){
+                estaLibre = false
+            }
+        }
+
+        if(estaLibre){
+            return {success: true}
+        } else {
+            return {success: false, locations: salasLibres}
+        }
+        
+    } catch (error) {
+      console.error(error);
+    }
+};
+
 
 async function populateAppointments(appointments){ 
     let users = await userController.getAllUsers();
@@ -448,9 +504,16 @@ async function createAppoinment(appointment){
 }
 
 exports.storeSession = async (req, res, next) => {
-   //console.log(req.body)
-    const appointment = req.body.appointment; 
+    const appointment = req.body.appointment;
     try {
+        const availability = await checkIfLocationIsAvailable(appointment)
+        if(!availability.success){
+            res.status(201).json({
+                success: false,
+                avaialble_locations: availability.locations,
+            })
+        }
+
         const doc = await createAppoinment(appointment)
         let newAppointment =  {
             id: doc.id,
@@ -458,7 +521,9 @@ exports.storeSession = async (req, res, next) => {
         }
         createSessionNotifications(newAppointment, "asignacion")
         newAppointment = await populateAsyncAppointment(newAppointment)
+        //falta poner success
         res.status(201).json({
+            success: true,
             appointment: newAppointment
         })
       } catch (error) {
