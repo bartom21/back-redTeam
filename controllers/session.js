@@ -10,8 +10,8 @@ const rrule = require('rrule')
 async function checkIfLocationIsAvailable(newAppointment){
     try {
         const appointments = await querySessions();
-        const locations = await resourceController.getLocations();
-
+        let locations = await resourceController.getLocations();
+        locations = locations.filter(loc => !loc.deleted)
         // New Appointment Data
         let start = new Date(newAppointment.startDate);
         let end =  new Date(newAppointment.endDate);
