@@ -194,8 +194,8 @@ cron.schedule("0 0 1 * *", async () => {
         doc = await response.get()
       }
     }
-  }catch{
+  }catch (error) {
     console.log(error)
-    console.log("hola")
+
   }
 });
