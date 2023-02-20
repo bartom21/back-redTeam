@@ -7,11 +7,11 @@ const userController = require('../controllers/user');
 
 router.get('/allUsers', isAuth, userController.loadUsers);
 
-router.get('/usersByRole/:role', userController.loadUsersByRole);
+router.get('/usersByRole/:role', isAuth, userController.loadUsersByRole);
 
-router.put('/updateProfile/:uid', userController.updateProfile);
+router.put('/updateProfile/:uid', isAuth, userController.updateProfile);
 
-router.post('/user', userController.createUser);
+router.post('/user', isAuth, userController.createUser);
 
 router.put('/userRole/:uid', isAuth, userController.addRole);
 
