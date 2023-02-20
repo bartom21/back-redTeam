@@ -11,42 +11,73 @@ async function checkIfLocationIsAvailable(newAppointment){
     try {
         const appointments = await querySessions();
         const locations = await resourceController.getLocations();
-        const start = new Date(newAppointment.startDate);
-        const end =  new Date(newAppointment.endDate);
+
+        // New Appointment Data
+        let start = new Date(newAppointment.startDate);
+        let end =  new Date(newAppointment.endDate);
+        const durationInMinutes = Math.round((end.getTime() - start.getTime())  / 60000);
+
         
-        let salasOcupadas = new Set();
-        for (const appointment of appointments){
-            let eventsInRange = []
+        let newAppointmentInstances = []
+        if(newAppointment.rRule){ //si el nuevo appointment es recurrente
+            let rruleSet = new rrule.RRuleSet()
+            rruleSet.rrule(new rrule.rrulestr(newAppointment.rRule,{dtstart: start}))
+
+            // + "\nEXDATE:"+appointment.exDate
             
-            if(appointment.rRule){ //si es recurrente
-                let rruleSet = new rrule.RRuleSet()
-                rruleSet.rrule(new rrule.rrulestr(appointment.rRule,{dtstart: new Date(appointment.startDate)}))
-    
-                // + "\nEXDATE:"+appointment.exDate
-                
-                if (appointment.exDate){
-                    rruleSet = rrule.rrulestr((rruleSet.valueOf().join("\n"))+"\nEXDATE:"+appointment.exDate)
-                }
-                
-                // Get all occurrence dates (Date instances):
-                
-                eventsInRange = rruleSet.between(start, end)
+            if (newAppointment.exDate){
+                rruleSet = rrule.rrulestr((rruleSet.valueOf().join("\n"))+"\nEXDATE:"+newAppointment.exDate)
             }
-            if( (eventsInRange.length > 0)|| ( ( start <= (new Date(appointment.startDate)) ) && (new Date(appointment.startDate) <= end)) ){
-            salasOcupadas.add(appointment.location)
+
+            const oneYearLimit = new Date();
+            oneYearLimit.setDate(start.getDate() + 365);
+            newAppointmentInstances = rruleSet.between( start , oneYearLimit )
+        }
+        newAppointmentInstances.push(new Date(newAppointment.startDate))
+
+        let salasOcupadas = new Set();
+
+        for (const newAppointmentInstance of newAppointmentInstances){
+            start = new Date(newAppointmentInstance)
+            end = new Date(newAppointmentInstance)
+            end.setMinutes(end.getMinutes() + durationInMinutes);
+
+            for (const appointment of appointments){
+                const dateOfAppointment = new Date(appointment.startDate);
+                let eventsInRange = []
+                
+                if(appointment.rRule){ //si es recurrente
+                    let rruleSet = new rrule.RRuleSet()
+                    rruleSet.rrule(new rrule.rrulestr(appointment.rRule,{dtstart: dateOfAppointment}))
+        
+                    // + "\nEXDATE:"+appointment.exDate
+                    
+                    if (appointment.exDate){
+                        rruleSet = rrule.rrulestr((rruleSet.valueOf().join("\n"))+"\nEXDATE:"+appointment.exDate)
+                    }
+                    
+                    // Get all occurrence dates (Date instances):
+                    
+                    eventsInRange = rruleSet.between(start, end)
+                }
+
+                if( (eventsInRange.length > 0)|| ( ( start <= dateOfAppointment ) && ( dateOfAppointment < end)) ){
+                    salasOcupadas.add(appointment.location)
+                }
             }
         }
-    
-        
         const salasOcupadass = Array.from(salasOcupadas.values())
-        const salasLibres = locations.filter(x => x.id !== newAppointment.location)
-        
-        let estaLibre = true
+
+        const salasLibres = locations.filter(x => !salasOcupadass.includes(x.id))
+
+        const estaLibre = !salasOcupadass.includes(newAppointment.location);
+
+        /*let estaLibre = true
         for(const sala of salasOcupadass){
             if(sala === newAppointment.location){
                 estaLibre = false
             }
-        }
+        }*/
 
         if(estaLibre){
             return {success: true}
@@ -510,23 +541,24 @@ exports.storeSession = async (req, res, next) => {
         if(!availability.success){
             res.status(201).json({
                 success: false,
-                avaialble_locations: availability.locations,
+                available_locations: availability.locations
+            })
+        } else {
+
+            const doc = await createAppoinment(appointment)
+            let newAppointment =  {
+                id: doc.id,
+                ...doc.data()
+            }
+            createSessionNotifications(newAppointment, "asignacion")
+            newAppointment = await populateAsyncAppointment(newAppointment)
+            //falta poner success
+            res.status(201).json({
+                success: true,
+                appointment: newAppointment
             })
         }
-
-        const doc = await createAppoinment(appointment)
-        let newAppointment =  {
-            id: doc.id,
-            ...doc.data()
-        }
-        createSessionNotifications(newAppointment, "asignacion")
-        newAppointment = await populateAsyncAppointment(newAppointment)
-        //falta poner success
-        res.status(201).json({
-            success: true,
-            appointment: newAppointment
-        })
-      } catch (error) {
-        console.error(error);
-      }
+    } catch (error) {
+    console.error(error);
+    }
 }
