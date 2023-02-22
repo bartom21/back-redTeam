@@ -9,12 +9,20 @@ const cron = require("node-cron");
 const sessionController = require('../controllers/session');
 const { stringify } = require('uuid');
 
+function getRandomColor() {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
 
 async function createLocation(location){
   const name = location.name;
   const rate = location.rate;
   const deleted = false;
-  const color = "red"; 
+  const color = getRandomColor(); 
   
   const response = await db.collection("locations").add({
       name,
@@ -119,12 +127,14 @@ async function loadTherapies() {
 
 async function getLocations() {
   const querySnapshot = await db.collection("locations").get();
-  const locations = querySnapshot.docs.map((doc) => {
+  let locations = querySnapshot.docs.map((doc) => {
     return {
       id: doc.id,
       ...doc.data()
     };
   });
+  locations = locations.sort((a, b) => (a.name > b.name) ? 1 : -1);
+
   return locations;
 }
 
@@ -147,7 +157,7 @@ cron.schedule("0 0 1 * *", async () => {
 
     const today = new Date();
     const last_month =  new Date();
-    last_month.setDate(last_month.getMonth() - 1);
+    last_month.setDate(last_month.getMonth()); //Segun si mes pasado o actual
 
     let invoices = {}
     let invoice = {}
