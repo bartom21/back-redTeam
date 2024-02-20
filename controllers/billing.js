@@ -160,7 +160,7 @@ exports.deleteInvoice= async (req, res, next) => {
 exports.editDiscount= async (req, res, next) => {
     try {
         if(req.params.id){
-            const querySnapshot = await db.collection("discounts").where('patient','==',req.params.id ).get();
+            const querySnapshot = await db.collection("discounts").where('professional','==',req.params.id ).get();
             const discounts = querySnapshot.docs.map((doc) =>{
                 return {
                     id: doc.id,
@@ -172,7 +172,7 @@ exports.editDiscount= async (req, res, next) => {
                     .doc(discounts[0].id)
                     .update({rate: req.body.discount});
                 const updatedDiscount =  {
-                    patient: req.params.id,
+                    professional: req.params.id,
                     rate: req.body.discount
                 }
                 res.status(201).json({
@@ -180,7 +180,7 @@ exports.editDiscount= async (req, res, next) => {
                 });
             }else{
                 const response = await db.collection("discounts").add({
-                    patient: req.params.id,
+                    professional: req.params.id,
                     rate: req.body.discount
                 });
                 const doc = await response.get()
