@@ -208,8 +208,8 @@ exports.loadUnpaidSessions= async (req, res, next) => {
             id: doc.id,
             ...doc.data()
           }});
-          const querySnapshotDiscounts = await db.collection("discounts").get();
-          const discounts = querySnapshotDiscounts.docs.map((doc) =>{
+          const querySnapshotRewards = await db.collection("rewards").get();
+          const rewards = querySnapshotRewards.docs.map((doc) =>{
               return {
               id: doc.id,
               ...doc.data()
@@ -227,10 +227,10 @@ exports.loadUnpaidSessions= async (req, res, next) => {
             if(therapy && therapy.rate && duration > 0){
                 for (const patient of appointment.patients) {
                     //console.log(appointment)
-                    let discount = discounts.find((item) => item.patient === patient)
-                    discount = discount ? discount.rate : 0
+                    let reward = rewards.find((item) => item.professional === professional)
+                    reward = reward ? reward.rate : 0
                     if(!appointment.invoiced.includes(patient)){
-                        const amount = (therapy.rate * duration * ((100- discount)/100)).toFixed(2)
+                        const amount = (therapy.rate * duration * ((100- reward)/100)).toFixed(2)
                         const unpaidAppointment = {
                             id: appointment.id+patient,
                             sessionId: appointment.id,

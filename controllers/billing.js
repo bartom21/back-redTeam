@@ -157,38 +157,38 @@ exports.deleteInvoice= async (req, res, next) => {
     
 }
 
-exports.editDiscount= async (req, res, next) => {
+exports.editReward= async (req, res, next) => {
     try {
         if(req.params.id){
-            const querySnapshot = await db.collection("discounts").where('professional','==',req.params.id ).get();
-            const discounts = querySnapshot.docs.map((doc) =>{
+            const querySnapshot = await db.collection("rewards").where('professional','==',req.params.id ).get();
+            const rewards = querySnapshot.docs.map((doc) =>{
                 return {
                     id: doc.id,
                     ...doc.data(),
             }});
-            if(discounts.length > 0){
+            if(rewards.length > 0){
                 await db
-                    .collection("discounts")
-                    .doc(discounts[0].id)
-                    .update({rate: req.body.discount});
-                const updatedDiscount =  {
+                    .collection("rewards")
+                    .doc(rewards[0].id)
+                    .update({rate: req.body.reward});
+                const updatedReward =  {
                     professional: req.params.id,
-                    rate: req.body.discount
+                    rate: req.body.reward
                 }
                 res.status(201).json({
-                    discount: updatedDiscount
+                    reward: updatedReward
                 });
             }else{
-                const response = await db.collection("discounts").add({
+                const response = await db.collection("rewards").add({
                     professional: req.params.id,
-                    rate: req.body.discount
+                    rate: req.body.reward
                 });
                 const doc = await response.get()
-                const newDiscount =  {
+                const newReward =  {
                     ...doc.data()
                 }
                 res.status(201).json({
-                    discount: newDiscount
+                    reward: newReward
                 });
             }
             
@@ -199,16 +199,16 @@ exports.editDiscount= async (req, res, next) => {
     
 }
 
-exports.loadDiscounts= async (req, res, next) => {
+exports.loadRewards= async (req, res, next) => {
     try {
-        const querySnapshot = await db.collection("discounts").get();
-        const discounts = querySnapshot.docs.map((doc) =>{
+        const querySnapshot = await db.collection("rewards").get();
+        const rewards = querySnapshot.docs.map((doc) =>{
         return {
         id: doc.id,
         ...doc.data()
       }});
       res.status(201).json({
-        discounts: discounts
+        rewards: rewards
     });
     } catch (error) {
       console.error(error);
